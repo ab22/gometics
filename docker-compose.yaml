@@ -1,0 +1,26 @@
+services:
+  runtime-metrics:
+    build:
+      dockerfile: ./Dockerfile
+    # depends_on:
+      # jaeger:
+        # condition: service_healthy
+
+  grafana:
+    env_file: .env
+    image: grafana/grafana-oss:latest
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./configs/grafana:/etc/grafana
+    ports:
+      - 3000:3000
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./configs/prometheus:/etc/prometheus
+    ports:
+      - 9090:9090
+
+volumes:
+  grafana-storage:
