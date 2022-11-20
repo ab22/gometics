@@ -27,6 +27,11 @@ const (
 	shutdownTimeout = 10 * time.Second
 )
 
+var (
+	// Commit version used to compile this binary.
+	commit string
+)
+
 func MustBuildLogger() *zap.Logger {
 	cfg := zap.NewDevelopmentConfig()
 	cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -64,6 +69,7 @@ func main() {
 	)
 
 	logger.Info("Starting Runtime Metrics...",
+		zap.String("commit", commit),
 		zap.String("collector_addr", addr),
 		zap.String("collector_interval", interval.String()))
 
