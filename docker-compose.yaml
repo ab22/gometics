@@ -2,9 +2,9 @@ services:
   runtime-metrics:
     build:
       dockerfile: ./Dockerfile
-    # depends_on:
-      # jaeger:
-        # condition: service_healthy
+    depends_on:
+      prometheus:
+        condition: service_healthy
 
   grafana:
     env_file: .env
@@ -24,3 +24,9 @@ services:
 
 volumes:
   grafana-storage:
+
+
+networks:
+  default:
+    external:
+      name: gometrics_default
