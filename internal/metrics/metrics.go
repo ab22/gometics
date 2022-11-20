@@ -39,8 +39,8 @@ type collector struct {
 	mGoroutines     prometheus.Gauge
 	mHeapAlloc      prometheus.Gauge
 	mSys            prometheus.Gauge
-	mPauseTotalNano prometheus.Histogram
-	mNumGCs         prometheus.Counter
+	mPauseTotalNano prometheus.Gauge
+	mNumGCs         prometheus.Gauge
 }
 
 type CollectorOpts struct {
@@ -76,11 +76,11 @@ func NewCollector(opts CollectorOpts) (Collector, error) {
 			Namespace: opts.MetricNamespace,
 			Name:      "heap_sys",
 		}),
-		mPauseTotalNano: prometheus.NewHistogram(prometheus.HistogramOpts{
+		mPauseTotalNano: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: opts.MetricNamespace,
 			Name:      "gc_pause_total_ns",
 		}),
-		mNumGCs: prometheus.NewCounter(prometheus.CounterOpts{
+		mNumGCs: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: opts.MetricNamespace,
 			Name:      "gc_completed_cycles",
 		}),

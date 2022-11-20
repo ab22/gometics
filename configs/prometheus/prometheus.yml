@@ -4,6 +4,12 @@ global:
   # scrape_timeout is set to the global default (10s).
 
 scrape_configs:
+  - job_name: "prometheus"
+    scrape_interval: 5s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - localhost:9090
 
   - job_name: "gometrics"
     scrape_interval: 5s

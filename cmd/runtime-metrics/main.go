@@ -20,7 +20,7 @@ const (
 	addr = ":8080"
 
 	// Interval used to report metrics.
-	interval = 5 * time.Second
+	interval = time.Second
 
 	// shutdownTimeout specifies how long we should
 	// wait for the collector to shutdown.
@@ -37,6 +37,17 @@ func MustBuildLogger() *zap.Logger {
 	}
 
 	return logger
+}
+
+func makeNoise() {
+	for {
+		<-time.After(2 * time.Second)
+		arr := make([]int64, 1024)
+
+		for i := range arr {
+			arr[i] = 22
+		}
+	}
 }
 
 func main() {
@@ -67,6 +78,8 @@ func main() {
 	logger.Info("Starting collector...",
 		zap.String("interval", interval.String()))
 	collector.Start()
+
+	go makeNoise()
 
 	sig, sigOK := <-signals
 	logger.Info("Interrupt signal received",
