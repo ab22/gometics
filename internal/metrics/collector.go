@@ -149,6 +149,8 @@ func (c *collector) Stop(ctx context.Context) error {
 	select {
 	case c.stopCh <- struct{}{}:
 	case <-ctx.Done():
+		c.stopped.Store(false)
+
 		return fmt.Errorf("failed to stop collector: %w", ctx.Err())
 	}
 
