@@ -44,17 +44,6 @@ func MustBuildLogger() *zap.Logger {
 	return logger
 }
 
-func makeNoise() {
-	for {
-		<-time.After(2 * time.Second)
-		arr := make([]int64, 1024)
-
-		for i := range arr {
-			arr[i] = 22
-		}
-	}
-}
-
 func main() {
 	var (
 		signals        = make(chan os.Signal, 1)
@@ -84,8 +73,6 @@ func main() {
 	logger.Info("Starting collector...",
 		zap.String("interval", interval.String()))
 	collector.Start()
-
-	go makeNoise()
 
 	sig, sigOK := <-signals
 	logger.Info("Interrupt signal received",
