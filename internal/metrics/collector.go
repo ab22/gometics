@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,6 +23,9 @@ type Collector interface {
 
 	// Stop performs a graceful shutdown. It blocks until all
 	// resources have been cleaned up or returns an error.
+	//
+	// If the collector fails to stop, then subsequent calls
+	// to this method with attempt to stop the collector again.
 	Stop(ctx context.Context) error
 }
 
@@ -31,9 +35,12 @@ type collector struct {
 	server   *http.Server
 
 	// Start/Stop controls
-	stopCh  chan struct{}
-	started atomic.Bool
-	stopped atomic.Bool
+	stopCh                 chan struct{}
+	metricReporterClosedCh chan struct{}
+	stopChClosed           bool
+	started                atomic.Bool
+	stopped                bool
+	stopLock               sync.Mutex
 
 	// Prometheus Metrics
 	mGoroutines     prometheus.Gauge
@@ -61,9 +68,10 @@ func NewCollector(opts CollectorOpts) (Collector, error) {
 	r.Handle("/metrics", promhttp.Handler())
 
 	c := &collector{
-		logger:   opts.Logger,
-		stopCh:   make(chan struct{}),
-		interval: opts.MetricInterval,
+		logger:                 opts.Logger,
+		metricReporterClosedCh: make(chan struct{}),
+		stopCh:                 make(chan struct{}),
+		interval:               opts.MetricInterval,
 		mGoroutines: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: opts.MetricNamespace,
 			Name:      "goroutines",
@@ -122,16 +130,19 @@ func (c *collector) Start() {
 		return
 	}
 
+	// Collector's HTTP goroutine.
 	go func() {
 		if err := c.server.ListenAndServe(); err != nil {
 			c.logger.Error("failed to stop prometheus server", zap.Error(err))
 		}
 	}()
 
+	// Collector's metric reporter goroutine.
 	go func() {
 		for {
 			select {
 			case <-c.stopCh:
+				close(c.metricReporterClosedCh)
 				return
 
 			case <-time.After(c.interval):
@@ -142,21 +153,24 @@ func (c *collector) Start() {
 }
 
 func (c *collector) Stop(ctx context.Context) error {
-	if swapped := c.stopped.CompareAndSwap(false, true); !swapped {
-		return nil
+	c.stopLock.Lock()
+	defer c.stopLock.Unlock()
+
+	if !c.stopChClosed {
+		close(c.stopCh)
 	}
 
 	select {
-	case c.stopCh <- struct{}{}:
+	case <-c.metricReporterClosedCh:
 	case <-ctx.Done():
-		c.stopped.Store(false)
-
 		return fmt.Errorf("failed to stop collector: %w", ctx.Err())
 	}
 
 	if err := c.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to stop collector: %w", err)
 	}
+
+	c.stopped = true
 
 	return nil
 }
